@@ -1,0 +1,3 @@
+# to git clone this repo use
+# git clone -b x64 https://github.com/blazing803/arch-install-scripts (to clone the x64 branch)
+# git clone -b x32 https://github.com/blazing803/arch-install-scripts (to clone the x32 branch)
