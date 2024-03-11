@@ -3,6 +3,13 @@
 # Prompt the user to select the drive
 read -p "Enter the drive for installation (e.g., /dev/sda): " DRIVE
 
+# Prompt the user to enter username
+read -p "Enter username for the new user: " USERNAME
+
+# Prompt the user to enter password
+read -sp "Enter password for the new user: " PASSWORD
+echo
+
 # Partition the selected drive
 echo -e "d\n1\nd\n2\nd\n3\nw" | fdisk $DRIVE
 echo -e "n\n\n\n+100M\nn\n\n\n+4G\nn\n\n\n\nw" | fdisk $DRIVE
@@ -35,8 +42,8 @@ echo "Arch Linux" > /etc/hostname
 echo "root:root" | chpasswd
 grep -q '^%sudo' /etc/group || groupadd sudo
 echo "%sudo   ALL=(ALL:ALL) ALL" >> /etc/sudoers
-useradd -m -G sudo -s /bin/bash archuser
-echo "archuser:archuser" | chpasswd
+useradd -m -G sudo -s /bin/bash $USERNAME
+echo "$USERNAME:$PASSWORD" | chpasswd
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=grub
 grub-mkconfig -o /boot/grub/grub.cfg
 systemctl enable ntpd.service
