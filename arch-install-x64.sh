@@ -3,6 +3,10 @@
 # Prompt the user to select the drive
 read -p "Enter the drive for installation (e.g., /dev/sda): " DRIVE
 
+# Prompt the user to enter root password
+read -sp "Enter password for root user: " ROOT_PASSWORD
+echo
+
 # Prompt the user to enter username
 read -p "Enter username for the new user: " USERNAME
 
@@ -26,7 +30,7 @@ mount ${DRIVE}p1 /mnt/boot/efi
 swapon ${DRIVE}p2
 
 # Install packages
-pacstrap /mnt base linux linux-firmware sof-firmware base-devel grub efibootmgr nano networkmanager git mesa nvidia ntp dhcpcd xorg i3 networkmanager network-manager-applet alacritty lightdm lightdm-gtk-greeter
+pacstrap /mnt base linux linux-firmware sof-firmware base-devel grub efibootmgr nano networkmanager git mesa nvidia ntp dhcpcd  networkmanager network-manager-applet alacritty lightdm lightdm-gtk-greeter
 
 # Generate fstab
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -39,7 +43,7 @@ sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 echo "Arch Linux" > /etc/hostname
-echo "root:root" | chpasswd
+echo "root:$ROOT_PASSWORD" | chpasswd
 grep -q '^%sudo' /etc/group || groupadd sudo
 echo "%sudo   ALL=(ALL:ALL) ALL" >> /etc/sudoers
 useradd -m -G sudo -s /bin/bash $USERNAME
