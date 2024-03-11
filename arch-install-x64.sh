@@ -14,6 +14,13 @@ read -p "Enter username for the new user: " USERNAME
 read -sp "Enter password for the new user: " PASSWORD
 echo
 
+# Prompt the user to enter additional packages
+read -p "Enter additional packages (space-separated): " PACKAGES
+
+# Prompt the user to enter additional services
+read -p "Enter additional services to enable (space-separated): " SERVICES
+
+
 # Partition the selected drive
 echo -e "d\n1\nd\n2\nd\n3\nw" | fdisk $DRIVE
 echo -e "n\n\n\n+100M\nn\n\n\n+4G\nn\n\n\n\nw" | fdisk $DRIVE
@@ -30,7 +37,7 @@ mount ${DRIVE}p1 /mnt/boot/efi
 swapon ${DRIVE}p2
 
 # Install packages
-pacstrap /mnt base linux linux-firmware sof-firmware base-devel grub efibootmgr nano networkmanager git mesa nvidia ntp dhcpcd  networkmanager network-manager-applet alacritty lightdm lightdm-gtk-greeter
+pacstrap /mnt base linux linux-firmware sof-firmware base-devel grub efibootmgr nano networkmanager git mesa nvidia ntp dhcpcd  networkmanager network-manager-applet alacritty 
 
 # Generate fstab
 genfstab -U /mnt >> /mnt/etc/fstab
