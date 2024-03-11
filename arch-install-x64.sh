@@ -37,7 +37,7 @@ mount ${DRIVE}p1 /mnt/boot/efi
 swapon ${DRIVE}p2
 
 # Install packages
-pacstrap /mnt base linux linux-firmware sof-firmware base-devel grub efibootmgr nano networkmanager git mesa nvidia ntp dhcpcd  networkmanager network-manager-applet alacritty 
+pacstrap /mnt base linux linux-firmware sof-firmware base-devel grub efibootmgr networkmanager git mesa nvidia ntp dhcpcd  networkmanager network-manager-applet alacritty 
 
 # Generate fstab
 genfstab -U /mnt >> /mnt/etc/fstab
