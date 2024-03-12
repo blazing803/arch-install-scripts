@@ -62,4 +62,7 @@ systemctl start ntpd.service
 timedatectl set-ntp true
 systemctl enable NetworkManager
 systemctl enable dhcpcd
+$PACKAGES
+$SERVICES
 EOF
+
