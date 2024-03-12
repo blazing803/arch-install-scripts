@@ -20,24 +20,22 @@ read -p "Enter additional packages (space-separated): " PACKAGES
 # Prompt the user to enter additional services
 read -p "Enter additional services to enable (space-separated): " SERVICES
 
-
 # Partition the selected drive
-echo -e "d\n1\nd\n2\nd\n3\nw" | fdisk $DRIVE
-echo -e "n\n\n\n+100M\nn\n\n\n+4G\nn\n\n\n\nw" | fdisk $DRIVE
+echo -e "o\nn\n\n\n+100M\nn\n\n\n+4G\nn\n\n\n\nw" | fdisk $DRIVE
 
 # Format the partitions
-mkfs.fat -F32 ${DRIVE}p1
-mkswap ${DRIVE}p2
-mkfs.ext4 ${DRIVE}p3
+mkfs.fat -F32 "${DRIVE}1"
+mkswap "${DRIVE}2"
+mkfs.ext4 "${DRIVE}3"
 
 # Mount the partitions
-mount ${DRIVE}p3 /mnt
+mount "${DRIVE}3" /mnt
 mkdir -p /mnt/boot/efi
-mount ${DRIVE}p1 /mnt/boot/efi
-swapon ${DRIVE}p2
+mount "${DRIVE}1" /mnt/boot/efi
+swapon "${DRIVE}2"
 
 # Install packages
-pacstrap /mnt base linux linux-firmware sof-firmware base-devel grub efibootmgr networkmanager git mesa nvidia ntp dhcpcd  networkmanager network-manager-applet alacritty 
+pacstrap /mnt base linux linux-firmware sudo vim grub efibootmgr networkmanager git mesa nvidia ntp dhcpcd network-manager-applet alacritty $PACKAGES
 
 # Generate fstab
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -51,18 +49,18 @@ locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 echo "Arch Linux" > /etc/hostname
 echo "root:$ROOT_PASSWORD" | chpasswd
-grep -q '^%sudo' /etc/group || groupadd sudo
+groupadd -f sudo
 echo "%sudo   ALL=(ALL:ALL) ALL" >> /etc/sudoers
-useradd -m -G sudo -s /bin/bash $USERNAME
+useradd -mG sudo -s /bin/bash $USERNAME
 echo "$USERNAME:$PASSWORD" | chpasswd
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=grub
 grub-mkconfig -o /boot/grub/grub.cfg
-systemctl enable ntpd.service
-systemctl start ntpd.service
+systemctl enable ntpd
+systemctl start ntpd
 timedatectl set-ntp true
 systemctl enable NetworkManager
 systemctl enable dhcpcd
-$PACKAGES
-$SERVICES
+for service in $SERVICES; do
+    systemctl enable $service
+done
 EOF
-
