@@ -3,9 +3,22 @@
 # Prompt the user to select the drive
 read -p "Enter the drive for installation (e.g., /dev/sda): " DRIVE
 
-# Partition the selected drive
-echo -e "d\n1\nd\n2\nd\n3\nw" | fdisk $DRIVE
-echo -e "n\n\n\n+100M\nn\n\n\n+4G\nn\n\n\n\nw" | fdisk $DRIVE
+# Prompt the user to enter root password
+read -p "Enter password for root user: " ROOT_PASSWORD
+echo
+
+# Prompt the user to enter username
+read -p "Enter username for the new user: " USERNAME
+
+# Prompt the user to enter password
+read -p "Enter password for the new user: " PASSWORD
+echo
+
+# Prompt the user to enter additional packages
+read -p "Enter additional packages (space-separated): " PACKAGES
+
+# Prompt the user to enter additional services
+read -p "Enter additional services to enable (space-separated): " SERVICES
 
 # Format the partitions
 mkfs.fat -F32 ${DRIVE}p1
@@ -19,7 +32,7 @@ mount ${DRIVE}p1 /mnt/boot/efi
 swapon ${DRIVE}p2
 
 # Install packages
-pacstrap /mnt base linux linux-firmware sof-firmware base-devel grub efibootmgr nano networkmanager git mesa nvidia ntp dhcpcd xorg i3 networkmanager network-manager-applet alacritty lightdm lightdm-gtk-greeter
+pacstrap /mnt base linux linux-firmware base-devel efibootmgr grub $PACKAGES
 
 # Generate fstab
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -39,10 +52,9 @@ useradd -m -G sudo -s /bin/bash archuser
 echo "archuser:archuser" | chpasswd
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=grub
 grub-mkconfig -o /boot/grub/grub.cfg
-systemctl enable ntpd.service
-systemctl start ntpd.service
-timedatectl set-ntp true
-systemctl enable NetworkManager
-systemctl enable dhcpcd
-systemctl enable lightdm
+
+for service in $SERVICES; do
+    systemctl enable "\$service"
+done
+
 EOF
