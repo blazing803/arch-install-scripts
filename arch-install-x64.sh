@@ -14,6 +14,9 @@ read -p "Enter username for the new user: " USERNAME
 read -p "Enter password for the new user: " PASSWORD
 echo
 
+# Prompt the user to enter hostname
+read -p "Enter hostname for the system: " HOSTNAME
+
 # Prompt the user to enter additional packages
 read -p "Enter additional packages (space-separated): " PACKAGES
 
@@ -41,15 +44,15 @@ genfstab -U /mnt >> /mnt/etc/fstab
 arch-chroot /mnt <<EOF
 ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
 hwclock --systohc
-sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+sed -i '/#en_US.UTF-8 UTF-8/s/^#//' /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
-echo "Arch Linux" > /etc/hostname
-echo "root:root" | chpasswd
-grep -q '^%sudo' /etc/group || groupadd sudo
+echo "$HOSTNAME" > /etc/hostname
+echo "root:$ROOT_PASSWORD" | chpasswd
+getent group sudo || groupadd sudo
 echo "%sudo   ALL=(ALL:ALL) ALL" >> /etc/sudoers
-useradd -m -G sudo -s /bin/bash archuser
-echo "archuser:archuser" | chpasswd
+useradd -mG sudo -s /bin/bash "$USERNAME"
+echo "$USERNAME:$PASSWORD" | chpasswd
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=grub
 grub-mkconfig -o /boot/grub/grub.cfg
 
