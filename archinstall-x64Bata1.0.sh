@@ -1,51 +1,46 @@
 #!/bin/bash
 
-# Function to display error messages
-error() {
-    echo "Error: $1" >&2
+# Function to hide commands and show custom message
+hide_commands() {
+    clear  # Clear the screen
+    echo "Performing installation. Please wait..."
+    sleep 2  # Sleep for 2 seconds to show the message
+}
+
+# Function to show commands again
+show_commands() {
+    clear  # Clear the screen
+    echo "Installation complete."
+    sleep 2  # Sleep for 2 seconds to show the message
+}
+
+# Exit immediately if any command fails
+set -e
+
+# Function to handle errors
+handle_error() {
+    clear  # Clear the screen
+    echo "Error occurred in line $1"
     exit 1
 }
+trap 'handle_error $LINENO' ERR
 
-# Function to check if a package is installed
-package_installed() {
-    pacman -Q "$1" &>/dev/null
-}
-
-# Function to install packages if not already installed
-install_package() {
-    if ! package_installed "$1"; then
-        pacman -S --noconfirm "$1" || error "Failed to install package $1"
-    fi
-}
-
-# Function to enable services
-enable_service() {
-    systemctl enable "$1" || error "Failed to enable service $1"
-}
-
-# Main script starts here
-
-# Check if script is run as root
-if [ "$EUID" -ne 0 ]; then
-    error "This script must be run as root"
-fi
+# Hide commands and show custom message
+hide_commands
 
 # Prompt the user to select the drive
 read -p "Enter the drive for installation (e.g., /dev/sda): " DRIVE
 
-# Validate drive input
-if [ ! -b "${DRIVE}" ]; then
-    error "Invalid drive ${DRIVE}"
-fi
-
 # Prompt the user to enter root password
 read -p "Enter password for root user: " ROOT_PASSWORD
+echo
 
 # Prompt the user to enter username
 read -p "Enter username for the new user: " USERNAME
 
 # Prompt the user to enter password
 read -p "Enter password for the new user: " PASSWORD
+echo
 
 # Prompt the user to enter hostname
 read -p "Enter hostname for the system: " HOSTNAME
@@ -57,42 +52,49 @@ read -p "Enter additional packages (space-separated): " PACKAGES
 read -p "Enter additional services to enable (space-separated): " SERVICES
 
 # Format the partitions
-mkfs.fat -F32 "${DRIVE}p1" || error "Failed to format EFI partition ${DRIVE}p1"
-mkswap "${DRIVE}p2" || error "Failed to format swap partition ${DRIVE}p2"
-mkfs.ext4 "${DRIVE}p3" || error "Failed to format root partition ${DRIVE}p3"
+echo "Formatting partitions..."
+mkfs.fat -F32 ${DRIVE}p1    # Format EFI partition as FAT32
+mkswap ${DRIVE}p2           # Format swap partition
+mkfs.ext4 ${DRIVE}p3        # Format root partition
 
 # Mount the partitions
-mount "${DRIVE}p3" /mnt || error "Failed to mount root partition ${DRIVE}p3"
-mkdir -p /mnt/boot/efi
-mount "${DRIVE}p1" /mnt/boot/efi || error "Failed to mount EFI partition ${DRIVE}p1"
-swapon "${DRIVE}p2" || error "Failed to activate swap partition ${DRIVE}p2"
+echo "Mounting partitions..."
+mount ${DRIVE}p3 /mnt                # Mount root partition to /mnt
+mkdir -p /mnt/boot/efi                # Create directory for EFI partition
+mount ${DRIVE}p1 /mnt/boot/efi        # Mount EFI partition to /mnt/boot/efi
+swapon ${DRIVE}p2                     # Activate swap partition
 
-# Install base packages
-pacstrap /mnt base linux linux-firmware base-devel efibootmgr grub $PACKAGES || error "Failed to install base packages"
+# Install packages
+echo "Installing packages..."
+pacstrap /mnt base linux linux-firmware base-devel efibootmgr grub $PACKAGES
 
 # Generate fstab
-genfstab -U /mnt >> /mnt/etc/fstab || error "Failed to generate fstab"
+echo "Generating fstab..."
+genfstab -U /mnt >> /mnt/etc/fstab
 
 # Chroot into the installed system
-arch-chroot /mnt bash <<EOF || error "Failed to chroot into installed system"
-ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
-hwclock --systohc
-sed -i '/#en_US.UTF-8 UTF-8/s/^#//' /etc/locale.gen
-locale-gen
-echo "LANG=en_US.UTF-8" > /etc/locale.conf
-echo "$HOSTNAME" > /etc/hostname
-echo "root:$ROOT_PASSWORD" | chpasswd
-getent group sudo || groupadd sudo
-echo "%sudo   ALL=(ALL:ALL) ALL" >> /etc/sudoers
-useradd -mG sudo -s /bin/bash "$USERNAME"
-echo "$USERNAME:$PASSWORD" | chpasswd
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=grub || error "Failed to install GRUB bootloader"
-grub-mkconfig -o /boot/grub/grub.cfg || error "Failed to generate GRUB configuration"
+echo "Chrooting into the installed system..."
+arch-chroot /mnt <<EOF
+# Inside chroot environment
+ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime  # Set timezone
+hwclock --systohc                                           # Set hardware clock
+sed -i '/#en_US.UTF-8 UTF-8/s/^#//' /etc/locale.gen          # Uncomment en_US.UTF-8 in locale.gen
+locale-gen                                                  # Generate locale
+echo "LANG=en_US.UTF-8" > /etc/locale.conf                  # Set system locale
+echo "$HOSTNAME" > /etc/hostname                            # Set hostname
+echo "root:$ROOT_PASSWORD" | chpasswd                       # Set root password
+getent group sudo || groupadd sudo                          # Check and add sudo group if missing
+echo "%sudo   ALL=(ALL:ALL) ALL" >> /etc/sudoers            # Add sudoers configuration
+useradd -mG sudo -s /bin/bash "$USERNAME"                   # Create user and add to sudo group
+echo "$USERNAME:$PASSWORD" | chpasswd                       # Set user password
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=grub  # Install GRUB bootloader
+grub-mkconfig -o /boot/grub/grub.cfg                        # Generate GRUB configuration
 
 for service in $SERVICES; do
-    systemctl enable "\$service"
+    systemctl enable "\$service"                            # Enable additional services
 done
 
-echo "Installation completed successfully."
-
 EOF
+
+# Show commands again
+show_commands
