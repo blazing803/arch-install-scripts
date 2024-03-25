@@ -23,16 +23,33 @@ read -p "Enter additional packages (space-separated): " PACKAGES
 # Prompt the user to enter additional services
 read -p "Enter additional services to enable (space-separated): " SERVICES
 
+# Calculate root partition size (half of the remaining drive size)
+DRIVE_SIZE=$(blockdev --getsize64 "$DRIVE")
+ROOT_SIZE=$((DRIVE_SIZE / 2))
+ROOT_PART_SIZE=$((ROOT_SIZE / 1024 / 1024))  # Convert to MiB
+
 # Format the partitions
-mkfs.fat -F32 "${DRIVE}p1"
-mkswap "${DRIVE}p2"
-mkfs.ext4 "${DRIVE}p3"
+parted -s "$DRIVE" mklabel gpt \
+  mkpart primary fat32 1MiB 512MiB \
+  set 1 esp on \
+  mkpart primary linux-swap 512MiB "$((512 + ROOT_PART_SIZE))MiB" \
+  mkpart primary ext4 "$((512 + ROOT_PART_SIZE))MiB" 100%
+
+# Set partition variables
+ROOT_PART="${DRIVE}3"
+EFI_PART="${DRIVE}1"
+SWAP_PART="${DRIVE}2"
+
+# Format partitions
+mkfs.fat -F32 "$EFI_PART"
+mkswap "$SWAP_PART"
+mkfs.ext4 "$ROOT_PART"
 
 # Mount the partitions
-mount "${DRIVE}p3" /mnt
+mount "$ROOT_PART" /mnt
 mkdir -p /mnt/boot/efi
-mount "${DRIVE}p1" /mnt/boot/efi
-swapon "${DRIVE}p2"
+mount "$EFI_PART" /mnt/boot/efi
+swapon "$SWAP_PART"
 
 # Install packages
 pacstrap /mnt base linux linux-firmware base-devel efibootmgr grub ${PACKAGES}
